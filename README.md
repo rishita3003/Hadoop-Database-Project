@@ -95,7 +95,6 @@ cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/reducer.py ~/reducer.py
 ```
 chmod +x ~/mapper.py
 chmod +x ~/reducer.py
-
 ```
 
 12. Convert Windows Line Endings to Unix line Endings (if you edited your script in windows, it might have Windows-style line endings - '\r\n' which should be converted to Unix Style Line Endings - '\n')
