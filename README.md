@@ -59,6 +59,11 @@ jps
 ```bash
 hadoop fs -mkdir -p /home/hadoop/hadoopdata/hdfs/data
 ```
+Note : To delete the directory in HDFS:
+
+```bash
+hadoop fs -rm -r /home/hadoop/hadoopdata/hdfs/data
+```
 
 7. Copy the file to HDFS:
 
@@ -70,7 +75,20 @@ hadoop fs -put /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/tripdata.csv /ho
 
 Large dataset:
 
+```bash
+hadoop fs -put /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/largetripdata.csv /home/hadoop/hadoopdata/hdfs/data
+```
 
+8. Import data to HDFS:
+
+First save the file in a local folder and then copy it in wsl : 
+```bash
+cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/import_data.py ~/import_data.py
+```
+
+```bash
+python3 import_data.py /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/largetripdata.csv /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv
+```
 
 8. Run the command to format the namenode (if not formatted already):
 
@@ -78,7 +96,7 @@ Large dataset:
 hadoop dfs -rm -r /user/hadoop/output
 ```
 
-10. Command to copy a file from windows to WSL:
+9. Command to copy a file from windows to WSL:
 
 ```bash
 cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/mapper.py ~/mapper.py
@@ -90,14 +108,15 @@ cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/reducer.py ~/reducer.py
 
 ```
 
-11. Convert mapper.py and reducer.py to executables by running:
+10. Convert mapper.py and reducer.py to executables by running:
 
 ```
 chmod +x ~/mapper.py
 chmod +x ~/reducer.py
+
 ```
 
-12. Convert Windows Line Endings to Unix line Endings (if you edited your script in windows, it might have Windows-style line endings - '\r\n' which should be converted to Unix Style Line Endings - '\n')
+11. Convert Windows Line Endings to Unix line Endings (if you edited your script in windows, it might have Windows-style line endings - '\r\n' which should be converted to Unix Style Line Endings - '\n')
 
 Go to root user:
 
@@ -118,19 +137,19 @@ dos2unix ~/mapper.py
 dos2unix ~/reducer.py
 ```
 
-13. test locally before running on hadoop:
+12. test locally before running on hadoop:
 
 ```bash
-hadoop fs -cat /home/hadoop/hadoopdata/hdfs/data/tripdata.csv | python3 mapper.py argument_name | sort | python3 reducer.py argument_name
+hadoop fs -cat /home/hadoop/hadoopdata/hdfs/data/shoppingdata.csv | python3 mapper.py | sort | python3 reducer.py 
 ```
 
 For testing the functions in the files locally, rum:
 
 ```bash
-hadoop fs -cat /home/hadoop/hadoopdata/hdfs/data/tripdata.csv | python3 mapper.py function_name | sort | python3 reducer.py function_name
+hadoop fs -cat /home/hadoop/hadoopdata/hdfs/data/shoppingdata.csv | python3 mapper.py argument_name | sort | python3 reducer.py argument_name
 ```
 
-9. Remove the existing output directory if needed by running the command:
+13. Remove the existing output directory if needed by running the command:
 
 ```bash
 hadoop fs -rm -r /home/hadoop/hadoopdata/hdfs/output
@@ -142,6 +161,8 @@ hadoop fs -rm -r /home/hadoop/hadoopdata/hdfs/output
 hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py argument_name"   -reducer "python3 reducer.py argument_name"
 ```
 
+eg. hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/largetripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py filter"   -reducer "python3 reducer.py filter"
+eg. hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/tripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py group"   -reducer "python3 reducer.py group"
 15. Check the output:
 
 ```bash
@@ -154,7 +175,3 @@ hadoop fs -cat /home/hadoop/hadoopdata/hdfs/output/part-*
 ```bash
 nano  /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/mapper.py
 ```
-
-
-
-
