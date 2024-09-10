@@ -2,6 +2,7 @@
 
 import sys
 from collections import defaultdict
+import json
 
 def projection_reducer():
     print("Projection Reducer called")
@@ -14,63 +15,60 @@ def filter_reducer():
     # line 
     for line in sys.stdin:
         print(line)
+    
 
-import sys
+def apply_aggregation(values, func):
+    """ Apply the specified aggregation function to a list of values. """
+    if func == 'SUM':
+        return sum(values)
+    elif func == 'COUNT':
+        return len(values)
+    elif func == 'MAX':
+        return max(values)
+    elif func == 'MIN':
+        return min(values)
+    elif func == 'AVG':
+        return sum(values) / len(values) if values else 0
+    else:
+        raise ValueError(f"Unknown function: {func}")
+    
+def get_agg_functions():
+    with open('agg_functions.json', 'r') as f:
+        agg_functions = json.load(f)
+    return agg_functions
+
 
 def group_by_reducer():
-    """ Reduces aggregated data based on group keys and outputs final results. """
-    current_key = None
-    current_aggregates = None
+    input_line = sys.stdin.readline().strip()
+    agg_functions = get_agg_functions()
+    
+    aggregated_results = defaultdict(list)
+    #print("input_line: ", input_line)
+    #print("agg_functions: ", agg_functions)
 
     for line in sys.stdin:
-        # Split the line into key and value parts
-        parts = line.strip().split(',')
-        key = tuple(parts[:-1])  # Group by key columns
-        values = parts[-1]  # Aggregated values
+        line = line.strip()
+        if not line:
+            continue
+        
+        parts = line.split('\t')
+        key = tuple(parts[:1])  # Change this if you have multiple grouping keys
+        values = list(map(float, parts[1:]))
 
-        # Parse aggregated values, e.g., SUM=10, COUNT=2
-        agg_data = {}
-        for value in values.split(';'):
-            func, val = value.split('=')
-            agg_data[func] = float(val)
+        # Ensure values list has enough elements
+        if len(values) < len(agg_functions):
+            print(f"Skipping line due to insufficient values: {line}")
+            continue
 
-        # If the key changes, output the current aggregates and reset
-        if key != current_key:
-            if current_key is not None:
-                output_results(current_key, current_aggregates)
-            current_key = key
-            current_aggregates = agg_data
-        else:
-            # Update the aggregates with the new data
-            update_final_aggregates(current_aggregates, agg_data)
+        # Group values by key, and accumulate in lists
+        for idx, (column, func) in enumerate(agg_functions.items(), start=1):  # assuming values align with dict ordering
+            aggregated_results[(key, column)].append(values[idx - 1])
 
-    # Output the final group's result
-    if current_key is not None:
-        output_results(current_key, current_aggregates)
-
-def output_results(key, aggregates):
-    """ Formats and prints the results for a group. """
-    results = ','.join(map(str, key)) + ',' + ','.join(f"{func}={val}" for func, val in aggregates.items())
-    print(results)
-
-def update_final_aggregates(current_aggregates, new_aggregates):
-    """ Combines the current and new aggregate values. """
-    for func, value in new_aggregates.items():
-        if func in current_aggregates:
-            if func == 'COUNT':
-                current_aggregates[func] += value
-            elif func in ['SUM', 'AVG_SUM']:  # Assume AVG is split into SUM and COUNT
-                current_aggregates[func] += value
-            elif func == 'MAX':
-                current_aggregates[func] = max(current_aggregates[func], value)
-            elif func == 'MIN':
-                current_aggregates[func] = min(current_aggregates[func], value)
-            elif func == 'AVG_COUNT':  # Separate handling if AVG was split
-                current_aggregates[func] += value
-        else:
-            current_aggregates[func] = value
-
-
+    # Apply aggregate functions and print results
+    for (key, column), values in aggregated_results.items():
+        func = agg_functions[column]
+        result = apply_aggregation(values, "SUM")
+        print(key[0],result)
 
 def main():
     current_word = None
@@ -106,7 +104,7 @@ if __name__ == "__main__":
         projection_reducer()
     elif sys.argv[1] == "filter":
         filter_reducer()
-    elif sys.argv[1] == "group_by":
+    elif sys.argv[1] == "group":
         group_by_reducer()
     else:
         print("Invalid argument")
