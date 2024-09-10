@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import csv
 
 # queries -> SELECT, FILTER, GROUP BY, Aggregate Functions (MAX, MIN, SUM, AVG, COUNT), ORDER BY, SORT, JOIN, UNION, INTERSECT -> also include the queries to be able to parse different number of tables
 
@@ -19,6 +20,7 @@ def parse_csv_line(line):
 
 def get_column_indices(header, columns):
     # get the indices of the columns in the header
+    #print("header in column indices: ", header)
     if len(columns) == 1 and columns[0] == '*':
         return list(range(len(header)))
          
@@ -34,9 +36,10 @@ def get_column_indices(header, columns):
 # Projection Query
 def projection_mapper():
     print("Projection Mapper called")
-    sql_query = "SELECT housing_median_age, population from tripdata"
-    sql_query = sql_query.lower()
-    from_index = sql_query.index('from')
+    #sql_query = "SELECT event_time from shoppingdata"
+    #sql_query = "SELECT VendorID,Trip_distance, Store_and_fwd_flag from largetripdata"
+    sql_query = "SELECT * from tripdata"
+    from_index = sql_query.lower().index('from')
     columns = sql_query[6:from_index-1].strip().split(',') # columns of the query
     #columns = [col.strip() for col in sql_query.split('select')[1].split('from')[0].split(',')]
     
@@ -98,12 +101,15 @@ def condition_check(header,values, condition):
 def evaluate_conditions(header, values, conditions):
     # Split conditions by AND/OR
     condition_list = split_conditions(conditions) # list of different conditions
+    #print("condition_list: ", condition_list)
     operators = extract_operators(conditions) # list of operators
     
     results = []
+    count = 0
     for condition in condition_list:
+        res = condition_check(header, values, condition.strip())
         results.append(condition_check(header, values, condition.strip())) # results for each condition 
-    
+
     final_result = results[0]
     for i, op in enumerate(operators):
         if op.upper() == 'AND':
@@ -138,31 +144,31 @@ def extract_operators(conditions):
 # Filter Query for multiple conditions
 def filter_mapper():
     print("Filter Mapper called")
-    sql_query = "SELECT longitude, latitude FROM tripdata WHERE housing_median_age > 30 and median_income < 1"
-    sql_query = sql_query.lower()
-    from_index = sql_query.index('from')
-    where_index = sql_query.index('where')
+    header = []
+    with open('/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv', 'r') as f:
+        reader = csv.reader(f)
+        header = next(reader)
+    sql_query = "Select housing_median_age,median_income,longitude,latitude from tripdata WHERE housing_median_age > 30"
+    #sql_query = "SELECT VendorID, trip_distance FROM largetripdata WHERE VendorID = 2"
+    from_index = sql_query.lower().index('from')
+    where_index = sql_query.lower().index('where')
     
     # Extract columns and conditions
     columns = sql_query[7:from_index].strip().split(',')
     conditions = sql_query[where_index + 6:].strip()
     
-    is_header = True
+    column_indices = get_column_indices(header, columns)
 
     for line in sys.stdin:
         line = line.strip()
-        if is_header:
-            header = parse_csv_line(line)
-            column_indices = get_column_indices(header, columns)
-            is_header = False
-            continue
-        
         values = parse_csv_line(line)
         
         # Check all conditions for the current row
         if evaluate_conditions(header, values, conditions):
             projected_values = [values[i] for i in column_indices]
-            print(','.join(projected_values))
+            projection = ','.join(projected_values)
+            print(projection)
+
 
 
 def extract_agg_functions(columns, all_columns):
@@ -172,92 +178,63 @@ def extract_agg_functions(columns, all_columns):
         if '(' in column and ')' in column:
             func_name = column.split('(')[0].strip().upper()
             inner_text = column[column.index('(')+1:column.index(')')].strip()
-            agg_functions[func_name] = get_column_indices(all_columns, [inner_text])
+            #agg_functions[func_name] = get_column_indices(all_columns, [inner_text])[0]
+            agg_functions[inner_text] = func_name
     return agg_functions
 
-def initialize_aggregates(agg_functions):
-    """ Initializes aggregate data structures based on functions. """
-    aggregates = {}
-    for func in agg_functions:
-        if func == 'COUNT' or func == 'SUM':
-            aggregates[func] = 0
-        else:
-            aggregates[func] = None
-    return aggregates
-
-def update_aggregates(aggregates, agg_functions, values):
-    """ Updates aggregates based on one row of data. """
-    for func, indices in agg_functions.items():
-        for idx in indices:
-            value = float(values[idx])
-            if func == 'COUNT':
-                aggregates[func] += 1
-            elif func == 'SUM':
-                aggregates[func] = aggregates.get(func, 0) + value
-            elif func == 'MAX':
-                aggregates[func] = max(aggregates.get(func, float('-inf')), value)
-            elif func == 'MIN':
-                aggregates[func] = min(aggregates.get(func, float('inf')), value)
-            elif func == 'AVG':
-                if aggregates.get(func) is None:
-                    aggregates[func] = [value, 1]  # Sum, Count
-                else:
-                    aggregates[func][0] += value
-                    aggregates[func][1] += 1
-    
-                
-                
-# Aggregate Functions with group by are MIN, MAX, SUM, COUNT, AVG
-
+import json 
 def group_by_mapper():
     print("Group By Mapper called")
-    sql_query = "SELECT housing_median_age, COUNT(*) FROM tripdata GROUP BY housing_median_age"
-    sql_query = sql_query.lower()
-
-    # Extract parts of the SQL query
-    select_index = sql_query.index('select')
-    from_index = sql_query.index('from')
-    group_by_index = sql_query.index('group by')
+    #sql_query = "SELECT VendorID, COUNT(trip_distance) FROM largetripdata GROUP BY VendorID"
+    sql_query = "Select housing_median_age, SUM(median_income) from tripdata GROUP BY housing_median_age"
+    try:
+        select_index = sql_query.lower().index('select')
+        from_index = sql_query.lower().index('from')
+        group_by_index = sql_query.lower().index('group by')
+    except ValueError as e:
+        print(f"Error parsing SQL query: {e}")
+        return
     
-    # Get grouping columns
     grouping_columns = sql_query[group_by_index+9:].strip().split(',')
-    
-    # Get selection columns
     columns = sql_query[select_index+7:from_index].strip().split(',')
-    
-    # Read the header line to map columns to their indices
+
     header_line = sys.stdin.readline().strip()
-    headers = parse_csv_line(header_line)
+    headers = []
+    with open('/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv', 'r') as f:
+        reader = csv.reader(f)
+        headers = next(reader)
+    #headers = parse_csv_line(header_line)
     group_indices = get_column_indices(headers, grouping_columns)
     agg_functions = extract_agg_functions(columns, headers)
     
-    # Dictionary to store aggregated results
-    results = {}
-    
-    # Process each data line
+    # Print header with aggregation functions for reducer
+    #print(f"HEADER\t{','.join(grouping_columns)}\t{','.join([f'{func}:{col}' for func, col in agg_functions.items()])}")
+    #print(agg_functions)
+    with open('agg_functions.json', 'w') as f:
+        json.dump(agg_functions, f)
+
+
     for line in sys.stdin:
         line = line.strip()
         values = parse_csv_line(line)
-        
-        # Create a tuple key based on grouping columns
+        try:
+            values = [float(value) for value in values]
+        except ValueError:
+            pass
+
         key = tuple(values[index] for index in group_indices)
+        output = list(key)
         
-        # Initialize or update the aggregated values
-        if key not in results:
-            results[key] = initialize_aggregates(agg_functions)
+        # Append values in the order of aggregation functions
+        for col, func in agg_functions.items():
+            col_index = headers.index(col)
+            output.append(values[col_index])
         
-        update_aggregates(results[key], agg_functions, values)
-
-    # Output results
-    for key, value_dict in results.items():
-        result_line = ','.join(key) + ',' + ','.join(str(value_dict[func]) for func in agg_functions)
-        print(result_line)
-
-    
-
-
-
-
+        #print('\t'.join(map(lambda x: f"{float(x):.6f}", key)) + "\t" + '\t'.join(map(lambda x: f"{float(x):.6f}", output[len(key):])))
+    # Format key as a zero-padded string to ensure correct sorting
+        formatted_key = '\t'.join(f"{float(x):10.6f}" for x in key)
+        formatted_output = '\t'.join(f"{float(x):10.6f}" for x in output[len(key):])
+        print(f"{formatted_key}\t{formatted_output}")
 
 # def filter_mapper():
 #     print("Filter Mapper called")
