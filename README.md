@@ -37,7 +37,7 @@ python3 --version
 su - hadoop
 ```
 
-4. run the command to start the hadoop cluster:
+4. Run the command to start the hadoop cluster:
 
 ```bash
 start-dfs.sh
@@ -48,7 +48,7 @@ or
 start-all.sh
 ```
 
-5. run the command to check status of the hadoop cluster:
+5. Run the command to check status of the hadoop cluster:
 
 ```bash
 jps
@@ -90,13 +90,13 @@ cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/import_data.py ~/import_data
 python3 import_data.py /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/largetripdata.csv /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv
 ```
 
-8. Run the command to format the namenode (if not formatted already):
+9. Run the command to format the namenode (if not formatted already):
 
 ```bash
 hadoop dfs -rm -r /user/hadoop/output
 ```
 
-9. Command to copy a file from windows to WSL:
+10. Command to copy a file from windows to WSL:
 
 ```bash
 cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/mapper.py ~/mapper.py
@@ -108,7 +108,7 @@ cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/reducer.py ~/reducer.py
 
 ```
 
-10. Convert mapper.py and reducer.py to executables by running:
+11. Convert mapper.py and reducer.py to executables by running:
 
 ```
 chmod +x ~/mapper.py
@@ -116,7 +116,7 @@ chmod +x ~/reducer.py
 
 ```
 
-11. Convert Windows Line Endings to Unix line Endings (if you edited your script in windows, it might have Windows-style line endings - '\r\n' which should be converted to Unix Style Line Endings - '\n')
+12. Convert Windows Line Endings to Unix line Endings (if you edited your script in windows, it might have Windows-style line endings - '\r\n' which should be converted to Unix Style Line Endings - '\n')
 
 Go to root user:
 
@@ -137,25 +137,25 @@ dos2unix ~/mapper.py
 dos2unix ~/reducer.py
 ```
 
-12. test locally before running on hadoop:
+13. test locally before running on hadoop:
 
 ```bash
 hadoop fs -cat /home/hadoop/hadoopdata/hdfs/data/shoppingdata.csv | python3 mapper.py | sort | python3 reducer.py 
 ```
 
-For testing the functions in the files locally, rum:
+For testing the functions in the files locally, run:
 
 ```bash
 hadoop fs -cat /home/hadoop/hadoopdata/hdfs/data/shoppingdata.csv | python3 mapper.py argument_name | sort | python3 reducer.py argument_name
 ```
 
-13. Remove the existing output directory if needed by running the command:
+14. Remove the existing output directory if needed by running the command:
 
 ```bash
 hadoop fs -rm -r /home/hadoop/hadoopdata/hdfs/output
 ```
 
-14. Run the hadoop streaming Job:
+15. Run the hadoop streaming Job:
 
 ```bash
 hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py argument_name"   -reducer "python3 reducer.py argument_name"
@@ -163,15 +163,34 @@ hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar
 
 eg. hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/largetripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py filter"   -reducer "python3 reducer.py filter"
 eg. hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/tripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py group"   -reducer "python3 reducer.py group"
-15. Check the output:
+
+16. Check the output:
 
 ```bash
 hadoop fs -ls /home/hadoop/hadoopdata/hdfs/output/
 hadoop fs -cat /home/hadoop/hadoopdata/hdfs/output/part-*
 ```
 
-16. To edit the mapper.py file in wsl itself (no need for steps 10,11,12 after every change in the file):
+17. To edit the mapper.py file in wsl itself (no need for steps 10,11,12 after every change in the file):
 
 ```bash
 nano  /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/mapper.py
 ```
+
+
+To switch between large and small dataset:
+
+1. copy the import_data.py file to wsl:
+```bash
+cp /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/import_data.py ~/import_data.py
+```
+
+```bash
+python3 import_data.py /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/largetripdata.csv /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv
+```
+
+```bash
+python3 import_data.py /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/tripdata.csv /mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv
+```
+
+2. change the queries in the mapper.py file to switch between large and small dataset.
