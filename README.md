@@ -161,8 +161,14 @@ hadoop fs -rm -r /home/hadoop/hadoopdata/hdfs/output
 hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py argument_name"   -reducer "python3 reducer.py argument_name"
 ```
 
-eg. ```hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/largetripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py filter"   -reducer "python3 reducer.py filter" ``` \
-eg. ```hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/tripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py group"   -reducer "python3 reducer.py group"```
+eg. 
+```bash
+hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/largetripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py filter"   -reducer "python3 reducer.py filter"
+``` 
+eg.
+```bash
+hadoop jar /home/hadoop/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.6.jar   -input /home/hadoop/hadoopdata/hdfs/data/tripdata.csv   -output /home/hadoop/hadoopdata/hdfs/output/   -mapper "python3 mapper.py group"   -reducer "python3 reducer.py group"
+```
 
 16. Check the output:
 
