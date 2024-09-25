@@ -6,6 +6,7 @@ import os
 import json 
 
 
+
 # queries -> SELECT, FILTER, GROUP BY, Aggregate Functions (MAX, MIN, SUM, AVG, COUNT), ORDER BY, SORT, JOIN, UNION, INTERSECT -> also include the queries to be able to parse different number of tables
 def get_data_path(table_name):
     return f'/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/{table_name}.csv'
@@ -270,8 +271,8 @@ def group_by_mapper():
 
 def header_files(data_file1, data_file2):
     
-    if os.path.exists("headers1.csv") and os.path.exists("headers2.csv"):
-        with open("headers1.csv", 'r') as f1, open("headers2.csv", 'r') as f2:
+    if os.path.exists("/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers1.csv") and os.path.exists("/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers2.csv"):
+        with open("/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers1.csv", 'r') as f1, open("/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers2.csv", 'r') as f2:
             headers1 = f1.readline().strip().split(',')
             headers2 = f2.readline().strip().split(',')
         return headers1, headers2
