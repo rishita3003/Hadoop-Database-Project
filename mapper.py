@@ -133,6 +133,7 @@ def evaluate_conditions(header, values, conditions):
     condition_list = split_conditions(conditions) # list of different conditions
     #print("condition_list: ", condition_list)
     operators = extract_operators(conditions) # list of operators
+    #print("operators: ", operators)
     
     results = []
     for condition in condition_list:
@@ -177,7 +178,8 @@ def extract_operators(conditions):
 def filter_mapper():
     print("Filter Mapper called")
     #sql_query = "Select housing_median_age,median_income,longitude,latitude from tripdata WHERE housing_median_age > 30"
-    sql_query = "SELECT * FROM largetripdata WHERE VendorID = 2"
+    #sql_query = "SELECT * FROM largetripdata WHERE VendorID = 2"
+    sql_query = "SELECT VendorID, passenger_count, pickup_latitude, pickup_longitude FROM largetripdata WHERE VendorID = 2 and passenger_count > 5"
 
     from_index = sql_query.lower().index('from')
     where_index = sql_query.lower().index('where')
@@ -192,7 +194,6 @@ def filter_mapper():
     
     column_indices = get_column_indices(headers, columns)
 
-
     for line in sys.stdin:
         line = line.strip()
         if line == ','.join(headers):
@@ -205,8 +206,6 @@ def filter_mapper():
             projected_values = [values[i] for i in column_indices]
             projection = ','.join(projected_values)
             print(projection)
-
-
 
 def extract_agg_functions(columns, all_columns):
     """ Extracts aggregate functions from the SELECT clause. """
