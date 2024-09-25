@@ -2,8 +2,13 @@
 
 import sys
 import csv
+import os
+import json 
+
 
 # queries -> SELECT, FILTER, GROUP BY, Aggregate Functions (MAX, MIN, SUM, AVG, COUNT), ORDER BY, SORT, JOIN, UNION, INTERSECT -> also include the queries to be able to parse different number of tables
+def get_data_path(table_name):
+    return f'/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/{table_name}.csv'
 
 def input_sql_query(args):
     #sql_query = input("Enter the SQL query: ")
@@ -33,26 +38,48 @@ def get_column_indices(header, columns):
     return indices
     #return [header.index(col.strip()) for col in columns if col.strip() in header]
 
+def get_headers(datafile):
+    # if the file already exists then..
+    if os.path.exists("/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv"):
+        with open("/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv", 'r') as f:
+            headers = f.readline().strip().split(',')
+            #print("existing headers")
+        return headers
+    
+      # Open the input data file
+    with open(datafile, 'r') as f:
+        # Read the first line as the headers
+        headers = f.readline().strip().split(',')
+        #print("made headers")
+    
+    output_csv = "/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv"
+
+    # Save headers to the output CSV file
+    with open(output_csv, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+    
+    return headers
+
 # Projection Query
 def projection_mapper():
     print("Projection Mapper called")
     #sql_query = "SELECT event_time from shoppingdata"
-    #sql_query = "SELECT VendorID,Trip_distance, Store_and_fwd_flag from largetripdata"
-    sql_query = "SELECT * from tripdata"
+    sql_query = "SELECT VendorID,Trip_distance, Store_and_fwd_flag from largetripdata"
+    #sql_query = "SELECT * from tripdata"
     from_index = sql_query.lower().index('from')
     columns = sql_query[6:from_index-1].strip().split(',') # columns of the query
     #columns = [col.strip() for col in sql_query.split('select')[1].split('from')[0].split(',')]
-    
-    is_header = True # for the first line -> getting column names
+    table_name = sql_query[from_index + 5:].strip()
+    datafile = get_data_path(table_name)
+    headers = get_headers(datafile)
+    #is_header = True # for the first line -> getting column names
+    column_indices = get_column_indices(headers, columns)
 
     for line in sys.stdin:
         line = line.strip()
-        if is_header:
-            header = parse_csv_line(line) # the column names
-            column_indices = get_column_indices(header, columns)
-            is_header = False
-            continue
-        
+        if line == (',').join(headers):
+            continue #skip the headers lines for evaluation
         values = parse_csv_line(line)
         projected_values = [values[i] for i in column_indices]
         print(','.join(projected_values))
@@ -66,31 +93,33 @@ def condition_check(header,values, condition):
     column_name = condition_parts[0]
     column_index = header.index(column_name)
 
+    i = column_index
     # convert all the values in the values list into float
     try:
-        values = [float(val) for val in values]
+        col_value = float(values[i])
         # If conversion fails, skip this row or handle as needed
     except ValueError:
+        #print("values: ", values)
+        print("ValueError: Values in string can;t be converted to float")
         return False
-    
-    i = column_index
+     
     if operator == '>':
-        if values[i] > float(value):
+        if col_value > float(value):
             return True
     elif operator == '<':
-        if values[i] < float(value):
+        if col_value < float(value):
             return True
     elif operator == '=':
-        if values[i] == float(value):
+        if col_value == float(value):
             return True
     elif operator == '>=':
-        if values[i] >= float(value):
+        if col_value >= float(value):
             return True
     elif operator == '<=':
-        if values[i] <= float(value):
+        if col_value <= float(value):
             return True
     elif operator == '<>' or operator == '!=':
-        if values[i] != float(value):
+        if col_value != float(value):
             return True
     else:
         return False
@@ -105,12 +134,14 @@ def evaluate_conditions(header, values, conditions):
     operators = extract_operators(conditions) # list of operators
     
     results = []
-    count = 0
     for condition in condition_list:
         res = condition_check(header, values, condition.strip())
-        results.append(condition_check(header, values, condition.strip())) # results for each condition 
+        #print("res: ", res)
+        results.append(res) # results for each condition 
 
     final_result = results[0]
+    #print("final result ", final_result)
+    
     for i, op in enumerate(operators):
         if op.upper() == 'AND':
             # the particular row is following all the conditions or not
@@ -144,27 +175,32 @@ def extract_operators(conditions):
 # Filter Query for multiple conditions
 def filter_mapper():
     print("Filter Mapper called")
-    header = []
-    with open('/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv', 'r') as f:
-        reader = csv.reader(f)
-        header = next(reader)
-    sql_query = "Select housing_median_age,median_income,longitude,latitude from tripdata WHERE housing_median_age > 30"
-    #sql_query = "SELECT VendorID, trip_distance FROM largetripdata WHERE VendorID = 2"
+    #sql_query = "Select housing_median_age,median_income,longitude,latitude from tripdata WHERE housing_median_age > 30"
+    sql_query = "SELECT * FROM largetripdata WHERE VendorID = 2"
+
     from_index = sql_query.lower().index('from')
     where_index = sql_query.lower().index('where')
+
+    table_name = sql_query[from_index+5:where_index].strip()
+    datafile = get_data_path(table_name)
+    headers = get_headers(datafile)
     
     # Extract columns and conditions
     columns = sql_query[7:from_index].strip().split(',')
     conditions = sql_query[where_index + 6:].strip()
     
-    column_indices = get_column_indices(header, columns)
+    column_indices = get_column_indices(headers, columns)
+
 
     for line in sys.stdin:
         line = line.strip()
+        if line == ','.join(headers):
+            continue
+
         values = parse_csv_line(line)
         
         # Check all conditions for the current row
-        if evaluate_conditions(header, values, conditions):
+        if evaluate_conditions(headers, values, conditions):
             projected_values = [values[i] for i in column_indices]
             projection = ','.join(projected_values)
             print(projection)
@@ -178,15 +214,14 @@ def extract_agg_functions(columns, all_columns):
         if '(' in column and ')' in column:
             func_name = column.split('(')[0].strip().upper()
             inner_text = column[column.index('(')+1:column.index(')')].strip()
-            #agg_functions[func_name] = get_column_indices(all_columns, [inner_text])[0]
             agg_functions[inner_text] = func_name
     return agg_functions
 
-import json 
+
 def group_by_mapper():
     print("Group By Mapper called")
-    #sql_query = "SELECT VendorID, COUNT(trip_distance) FROM largetripdata GROUP BY VendorID"
-    sql_query = "Select housing_median_age, SUM(median_income) from tripdata GROUP BY housing_median_age"
+    sql_query = "SELECT VendorID, COUNT(trip_distance) FROM largetripdata GROUP BY VendorID"
+    #sql_query = "Select housing_median_age, SUM(median_income) from tripdata GROUP BY housing_median_age"
     try:
         select_index = sql_query.lower().index('select')
         from_index = sql_query.lower().index('from')
@@ -194,22 +229,17 @@ def group_by_mapper():
     except ValueError as e:
         print(f"Error parsing SQL query: {e}")
         return
-    
+      
     grouping_columns = sql_query[group_by_index+9:].strip().split(',')
     columns = sql_query[select_index+7:from_index].strip().split(',')
-
-    header_line = sys.stdin.readline().strip()
-    headers = []
-    with open('/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers.csv', 'r') as f:
-        reader = csv.reader(f)
-        headers = next(reader)
+    table_name = sql_query[from_index+5:group_by_index].strip()
+    datafile = get_data_path(table_name)
+    headers = get_headers(datafile)
+    
     #headers = parse_csv_line(header_line)
     group_indices = get_column_indices(headers, grouping_columns)
     agg_functions = extract_agg_functions(columns, headers)
     
-    # Print header with aggregation functions for reducer
-    #print(f"HEADER\t{','.join(grouping_columns)}\t{','.join([f'{func}:{col}' for func, col in agg_functions.items()])}")
-    #print(agg_functions)
     with open('agg_functions.json', 'w') as f:
         json.dump(agg_functions, f)
 
@@ -217,25 +247,119 @@ def group_by_mapper():
     for line in sys.stdin:
         line = line.strip()
         values = parse_csv_line(line)
-        try:
-            values = [float(value) for value in values]
-        except ValueError:
-            pass
-
-        key = tuple(values[index] for index in group_indices)
-        output = list(key)
         
-        # Append values in the order of aggregation functions
-        for col, func in agg_functions.items():
-            col_index = headers.index(col)
-            output.append(values[col_index])
-        
-        #print('\t'.join(map(lambda x: f"{float(x):.6f}", key)) + "\t" + '\t'.join(map(lambda x: f"{float(x):.6f}", output[len(key):])))
-    # Format key as a zero-padded string to ensure correct sorting
-        formatted_key = '\t'.join(f"{float(x):10.6f}" for x in key)
-        formatted_output = '\t'.join(f"{float(x):10.6f}" for x in output[len(key):])
-        print(f"{formatted_key}\t{formatted_output}")
+        if values != headers:
+            try:
+                values = [float(value) for value in values]
+            except ValueError:
+                pass
 
+            key = tuple(values[index] for index in group_indices)
+            output = list(key)
+            
+            # Append values in the order of aggregation functions
+            for col, func in agg_functions.items():
+                col_index = headers.index(col)
+                output.append(values[col_index])
+            
+        # Format key as a zero-padded string to ensure correct sorting
+            formatted_key = '\t'.join(f"{float(x):10.6f}" for x in key)
+            formatted_output = '\t'.join(f"{float(x):10.6f}" for x in output[len(key):])
+            print(f"{formatted_key}\t{formatted_output}")
+
+
+def header_files(data_file1, data_file2):
+    
+    if os.path.exists("headers1.csv") and os.path.exists("headers2.csv"):
+        with open("headers1.csv", 'r') as f1, open("headers2.csv", 'r') as f2:
+            headers1 = f1.readline().strip().split(',')
+            headers2 = f2.readline().strip().split(',')
+        return headers1, headers2
+    
+    # Open the input data file
+    with open(data_file1, 'r') as f:
+        # Read the first line as the headers
+        headers1 = f.readline().strip().split(',')
+
+    with open(data_file2, 'r') as f:
+        # Read the first line as the headers
+        headers2 = f.readline().strip().split(',')
+    
+    output_csv1 = "/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers1.csv"
+    output_csv2 = "/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/headers2.csv"
+
+    # Save headers to the output CSV file
+    with open(output_csv1, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(headers1)
+
+    with open(output_csv2, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(headers2)
+    
+    return headers1, headers2
+
+
+# Join 2 tables -> inner join for now
+def join_mapper():
+    print("Join Mapper called")
+    sql_query = "SELECT passenger_count FROM largetripdata JOIN largetripdata2 ON largetripdata.dropoff_longitude = largetripdata2.dropoff_longitude"
+    #sql_query = "SELECT * from tripdata join tripdata on tripdata.longitude = tripdata.longitude"
+    select_index = sql_query.lower().index('select')
+    join_index = sql_query.lower().index('join')
+    on_index = sql_query.lower().index('on')
+    from_index = sql_query.lower().index('from')
+    
+    table1 = sql_query[from_index+5:join_index].strip()
+    table2 = sql_query[join_index+5:on_index].strip()
+    
+    columns = sql_query[select_index + 7 : from_index].strip().split(',')
+
+    # Extract the join condition columns
+    join_condition = sql_query[on_index+3:].strip()
+    join_columns = join_condition.split('=')
+    table1_join_column = join_columns[0].strip().split('.')[-1]
+    table2_join_column = join_columns[1].strip().split('.')[-1]
+
+
+    # by default the join type is inner
+    join_type = "inner"
+    if "left join" in sql_query.lower():
+        join_type = "left"
+    elif "right join" in sql_query.lower():
+        join_type = "right"
+    elif "outer join" in sql_query.lower():
+        join_type = "outer"
+    elif "natural join" in sql_query.lower():
+        join_type = "natural"
+    
+    table1_data = {}
+    table2_data = {}
+
+    data_file1 = f"/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/{table1}.csv"
+    data_file2 = f"/mnt/c/Users/hp/OneDrive/Desktop/hadoop_database/{table2}.csv"
+
+    headers1, headers2 = header_files(data_file1, data_file2)
+    
+    with open(data_file1, 'r') as f:
+        reader = csv.reader(f)
+        #headers1 = next(reader)
+        for row in reader:
+            key = row[headers1.index(table1_join_column)]
+            #print("key1: ", key)
+            table1_data[key] = row
+    
+    with open(data_file2, 'r') as f:
+        reader = csv.reader(f)
+        #headers2 = next(reader)
+        for row in reader:
+            key = row[headers2.index(table2_join_column)]
+            #print("key2: ", key)
+            table2_data[key] = row
+    
+    
+
+    
 # def filter_mapper():
 #     print("Filter Mapper called")
 #     # for single condition only
@@ -279,6 +403,8 @@ if __name__ == "__main__":
         filter_mapper()
     elif sql_query_type == "group":
         group_by_mapper()
+    elif sql_query_type == "join":
+        join_mapper()
     else:
         print("Invalid SQL query type")
         sys.exit(1)
