@@ -1,5 +1,7 @@
 # Hadoop Database Project - Implementing MapReduce 
 
+Link to the site of the project -> https://sites.google.com/view/hadoop-database-rishita/sql-query-parser
+
 ## Steps to run the project
 
 ### Follow the steps in the link below to install Hadoop on Ubuntu 22.04  -:
