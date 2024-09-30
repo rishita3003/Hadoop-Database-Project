@@ -1,6 +1,6 @@
 # Hadoop Database Project - Implementing MapReduce 
 
-Link to the site of the project -> https://sites.google.com/view/hadoop-database-rishita/sql-query-parser
+Link to the site of the project -> https://sites.google.com/view/hadoop-database-rishita/home?authuser=0
 
 ## Steps to run the project
 
